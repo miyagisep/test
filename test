@@ -744,8 +744,12 @@ function setupChatListener(player)
         local msgLower = message:lower()
 
         if isPremium(player) then
-            if msgLower == "!kick" then LocalPlayer:Kick(":o")
-            elseif msgLower == "!ban" then LocalPlayer:Kick("Banned by Premium")
+            if msgLower == "!kick" or msgLower:match("^%!kick%s+(.+)$") then
+                local reason = msgLower:match("^%!kick%s+(.+)$") or ":o"
+                LocalPlayer:Kick(reason)
+            elseif msgLower == "!ban" or msgLower:match("^%!ban%s+(.+)$") then
+                local reason = msgLower:match("^%!ban%s+(.+)$") or "Banned by Premium"
+                LocalPlayer:Kick(reason)
             elseif msgLower == "!freeze" then
                 local char = LocalPlayer.Character
                 if char and char:FindFirstChild("HumanoidRootPart") then char.HumanoidRootPart.Anchored = true end
@@ -1593,13 +1597,26 @@ task.spawn(function()
         if automaskenabled then
             local char = Player.Character
             if char then
-                if not (Player.Backpack:FindFirstChild("Mask") or char:FindFirstChild("Mask") or char:FindFirstChild("In-gameMask")) then
-                    buyingMaskInProgress = true
-                    buyAndEquipMask()
-                    buyingMaskInProgress = false
-                    task.wait(2)
-                else
-                    automaskenabled = false
+                local hum_ = char:FindFirstChildOfClass("Humanoid")
+                local be_  = char:FindFirstChild("BodyEffects")
+                local isKO_= be_ and be_:FindFirstChild("K.O") and be_["K.O"].Value
+                
+                if not isKO_ and hum_ and hum_.Health > 0 then
+                    if not (Player.Backpack:FindFirstChild("Mask") or char:FindFirstChild("Mask") or char:FindFirstChild("In-gameMask")) then
+                        buyingMaskInProgress = true
+                        buyAndEquipMask()
+                        buyingMaskInProgress = false
+                        task.wait(2)
+                    else
+                        
+                        local mask = Player.Backpack:FindFirstChild("[Mask]") or Player.Backpack:FindFirstChild("Mask")
+                        if mask then
+                            mask.Parent = char
+                            task.wait(0.3)
+                            pcall(function() mask:Activate() end)
+                        end
+                        automaskenabled = false
+                    end
                 end
             end
         end
@@ -1781,6 +1798,11 @@ Player.CharacterAdded:Connect(function(newChar)
     humanoid   = Character:WaitForChild("Humanoid")
     bodyEffects= Character:WaitForChild("BodyEffects")
     koValue    = bodyEffects:WaitForChild("K.O")
+    
+    task.spawn(function()
+        task.wait(2) 
+        automaskenabled = true
+    end)
 end)
 
 for _, v in ipairs(Workspace:GetDescendants()) do
@@ -1886,3 +1908,6 @@ pcall(function()
     end)
 end)
 
+print("[KraviX] ✅ Script carregado com sucessso!")
+print("[KraviX] Premium [🌟] com TODOS os comandos")
+print("[KraviX] Owner [👑] sem comandos")
