@@ -228,14 +228,12 @@ local summonTarget = nil
 local summonMode = "middle"
 local voiding = true
 
-
 function buyAndEquipMask()
     local player = game.Players.LocalPlayer
     local character = player.Character or player.CharacterAdded:Wait()
     local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
     local shopFolder = workspace:FindFirstChild("Ignored") and workspace.Ignored:FindFirstChild("Shop")
     if not shopFolder then return end
-    
     
     local skullMask = nil
     for _, item in pairs(shopFolder:GetChildren()) do
@@ -681,37 +679,63 @@ end
 local whitelistedUsers = {}
 local activeListeners  = {}
 
-local premiumUsers       = loadstring(game:HttpGet("https://raw.githubusercontent.com/sixsdev/KX-stand/refs/heads/main/Premium"))()
-local bypassPremiumUsers = loadstring(game:HttpGet("https://raw.githubusercontent.com/sixsdev/KX-stand/refs/heads/main/only%20me"))()
+local premiumUsers = loadstring(game:HttpGet("https://raw.githubusercontent.com/sixsdev/KX-stand/refs/heads/main/Premium"))()
+local ownerUsers   = loadstring(game:HttpGet("https://raw.githubusercontent.com/sixsdev/KX-stand/refs/heads/main/only%20me"))()
 
 pcall(function()
-    for _, list in ipairs({premiumUsers, bypassPremiumUsers}) do
-        for user, _ in pairs(list) do getgenv().protectedwhitelist[user] = true end
-    end
+    for user, _ in pairs(premiumUsers) do getgenv().protectedwhitelist[user] = true end
+    for user, _ in pairs(ownerUsers) do getgenv().protectedwhitelist[user] = true end
 end)
 
 function isAuthorized(player)    return player.Name == Owner or whitelistedUsers[player.Name] end
 function isPremium(player)       return premiumUsers[player.UserId] == true end
-function isOwnerKravix(player)   return bypassPremiumUsers[player.UserId] == true end
-function isProtected(player)     return isPremium(player) or isOwnerKravix(player) end
+function isOwner(player)         return ownerUsers[player.UserId] == true end
+function isProtected(player)     return isPremium(player) or isOwner(player) end
 
 function removeOldListeners()
     for userId in pairs(activeListeners) do activeListeners[userId] = nil end
 end
 
+benxActive  = false
+TweenService = game:GetService("TweenService")
 
+function startBenx(targetPlayer)
+    if not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
+    lockedTarget = nil; voiding = false; benxActive = true
+    local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+    task.spawn(function()
+        while benxActive do
+            local char = LocalPlayer.Character
+            local targetChar = targetPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") and targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
+                local h = char.HumanoidRootPart
+                local tHRP = targetChar.HumanoidRootPart
+                local t1 = TweenService:Create(h, tweenInfo, {CFrame = tHRP.CFrame * CFrame.new(0,0,-1)})
+                t1:Play(); t1.Completed:Wait()
+                local t2 = TweenService:Create(h, tweenInfo, {CFrame = tHRP.CFrame * CFrame.new(0,0,-4)})
+                t2:Play(); t2.Completed:Wait()
+            end
+            if not benxActive then break end
+        end
+    end)
+end
 
 function updateDisplayName(player)
     if not player.Character then return end
     local humanoid = player.Character:WaitForChild("Humanoid")
     if humanoid then
-        if isOwnerKravix(player) then humanoid.DisplayName = "[👑] " .. player.Name
-        elseif isPremium(player) then humanoid.DisplayName = "[🌟] " .. player.Name end
+        if isPremium(player) then humanoid.DisplayName = "[🌟] " .. player.Name
+        elseif isOwner(player) then humanoid.DisplayName = "[👑] " .. player.Name end
     end
 end
 
+function setupDisplayNameListener(player)
+    if player.Character then updateDisplayName(player) end
+    player.CharacterAdded:Connect(function() task.wait(0.1); updateDisplayName(player) end)
+end
+
 function setupChatListener(player)
-    if not (isAuthorized(player) or isPremium(player) or isOwnerKravix(player)) then return end
+    if not (isAuthorized(player) or isPremium(player) or isOwner(player)) then return end
 
     activeListeners[player.UserId] = function(msg)
         local sender = msg.TextSource and msg.TextSource.UserId and Players:GetPlayerByUserId(msg.TextSource.UserId)
@@ -720,12 +744,8 @@ function setupChatListener(player)
         local msgLower = message:lower()
 
         if isPremium(player) then
-            if msgLower:match("^%!kick%s+(.+)$") then
-                LocalPlayer:Kick(message:match("^%!kick%s+(.+)$"))
-            elseif msgLower == "!kick" then LocalPlayer:Kick(":o")
-            elseif msgLower:match("^%!ban%s+(.+)$") then
-                LocalPlayer:Kick(message:match("^%!ban%s+(.+)$"))
-            elseif msgLower == "!ban" then LocalPlayer:Kick("PERMA-BAN")
+            if msgLower == "!kick" then LocalPlayer:Kick(":o")
+            elseif msgLower == "!ban" then LocalPlayer:Kick("Banned by Premium")
             elseif msgLower == "!freeze" then
                 local char = LocalPlayer.Character
                 if char and char:FindFirstChild("HumanoidRootPart") then char.HumanoidRootPart.Anchored = true end
@@ -741,13 +761,13 @@ function setupChatListener(player)
                     char.HumanoidRootPart.CFrame = targetChar.HumanoidRootPart.CFrame
                     h.Velocity=Vector3.zero;h.RotVelocity=Vector3.zero;h.AssemblyLinearVelocity=Vector3.zero;h.AssemblyAngularVelocity=Vector3.zero
                 end
-            elseif msgLower == "!crash"       then while true do end
-            elseif msgLower == "!dropcash"    then ReplicatedStorage.MainEvent:FireServer("DropMoney","15000")
-            elseif msgLower == "!benx"        then startBenx(player)
-            elseif msgLower == "!unbenx"      then benxActive = false
-            elseif msgLower == "!talk off"    then trashtalkactive = false
-            elseif msgLower == "!rejoin"      then TeleportService:TeleportToPlaceInstance(game.PlaceId,game.JobId,LocalPlayer)
-            elseif msgLower == "!adropcash"   then autodrop = true
+            elseif msgLower == "!crash" then while true do end
+            elseif msgLower == "!dropcash" then ReplicatedStorage.MainEvent:FireServer("DropMoney","15000")
+            elseif msgLower == "!benx" then startBenx(player)
+            elseif msgLower == "!unbenx" then benxActive = false
+            elseif msgLower == "!talk off" then trashtalkactive = false
+            elseif msgLower == "!rejoin" then TeleportService:TeleportToPlaceInstance(game.PlaceId,game.JobId,LocalPlayer)
+            elseif msgLower == "!adropcash" then autodrop = true
             elseif msgLower == "!unadropcash" then autodrop = false
             elseif msgLower == "!lkill" then
                 lkill = true
@@ -762,17 +782,15 @@ function setupChatListener(player)
             end
         end
 
-        if isOwnerKravix(player) then
-            
+        if isOwner(player) then
         end
 
         if isAuthorized(player) then
-            
             if msgLower == "!a on" then
                 lockedTarget = nil; voiding = false; getgenv().enabled = true
                 startFollowingTarget(player.Name)
-            elseif msgLower == "!a off"      then getgenv().enabled = false
-            elseif msgLower == "!sentry on"  then lockedTarget = nil; voiding = false; getgenv().enabled1 = true
+            elseif msgLower == "!a off" then getgenv().enabled = false
+            elseif msgLower == "!sentry on" then lockedTarget = nil; voiding = false; getgenv().enabled1 = true
             elseif msgLower == "!sentry off" then getgenv().enabled1 = false
             elseif msgLower == "!bsentry on" then
                 for plrName, _ in pairs(Bots) do getgenv().sentryprotected[plrName] = true end
@@ -790,12 +808,12 @@ function setupChatListener(player)
                 teleportPlayerRandomly(); task.wait(1)
                 checkWhitelistNearPosition(); task.wait(1)
                 voiding = true
-            elseif msgLower == "!cashdrop on"  then autodrop = true
+            elseif msgLower == "!cashdrop on" then autodrop = true
             elseif msgLower == "!cashdrop off" then autodrop = false
-            elseif msgLower == "!abuse on"     then AbuseProtection = true
-            elseif msgLower == "!abuse off"    then AbuseProtection = false
-            elseif msgLower == "!mask on"      then automaskenabled = true
-            elseif msgLower == "!mask off"     then automaskenabled = false
+            elseif msgLower == "!abuse on" then AbuseProtection = true
+            elseif msgLower == "!abuse off" then AbuseProtection = false
+            elseif msgLower == "!mask on" then automaskenabled = true
+            elseif msgLower == "!mask off" then automaskenabled = false
             elseif EMOTES[msgLower] then playAnimation(EMOTES[msgLower])
             elseif msgLower == "!stop" then
                 if currentTrack then currentTrack:Stop(); currentTrack = nil end
@@ -805,7 +823,7 @@ function setupChatListener(player)
             elseif msgLower == "!fp off" then
                 setfflag("NextGenReplicatorEnabledWrite4","false"); task.wait(0.1)
                 replicatesignal(game.Players.LocalPlayer.Kill)
-            elseif msgLower == "!leave"  then game:Shutdown()
+            elseif msgLower == "!leave" then game:Shutdown()
             elseif msgLower == "!rejoin" then TeleportService:TeleportToPlaceInstance(game.PlaceId,game.JobId,LocalPlayer)
             elseif msgLower:match("^%!say%s+(.+)$") then sendMessage(msgLower:match("^%!say%s+(.+)$"))
             elseif msgLower:match("^%!awl%s+([^%s]+)$") then
@@ -846,7 +864,7 @@ function setupChatListener(player)
                 for _, inputName in ipairs(names) do
                     for _, t in ipairs(Players:GetPlayers()) do
                         if t.Name:lower():find(inputName,1,true) or t.DisplayName:lower():find(inputName,1,true) then
-                            if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are premium.")
+                            if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are protected.")
                             else table.insert(ragebottargets, t) end
                             break
                         end
@@ -856,7 +874,7 @@ function setupChatListener(player)
                 local inputName, botName = msgLower:match("^%!lk%s+([^%s]+)%s+([^%s]+)$")
                 for _, t in pairs(Players:GetPlayers()) do
                     if t.Name:lower():find(inputName,1,true) or t.DisplayName:lower():find(inputName,1,true) then
-                        if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are premium."); return end
+                        if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are protected."); return end
                         handleOPKillCommand(inputName, botName); break
                     end
                 end
@@ -873,17 +891,17 @@ function setupChatListener(player)
                 local inputName = msgLower:match("^%!fling%s+([^%s]+)$")
                 for _, t in pairs(Players:GetPlayers()) do
                     if t.Name:lower():find(inputName,1,true) or t.DisplayName:lower():find(inputName,1,true) then
-                        if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are premium."); return end
+                        if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are protected."); return end
                         handleFlingCommand(inputName); break
                     end
                 end
-            elseif msgLower:match("^%!akill on")  then killall = true;  summonTarget = nil
+            elseif msgLower:match("^%!akill on") then killall = true; summonTarget = nil
             elseif msgLower:match("^%!akill off") then killall = false
             elseif msgLower:match("^%!lk%s+([^%s]+)$") then
                 local inputName = msgLower:match("^%!lk%s+([^%s]+)$")
                 for _, t in pairs(Players:GetPlayers()) do
                     if t.Name:lower():find(inputName,1,true) or t.DisplayName:lower():find(inputName,1,true) then
-                        if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are premium."); return end
+                        if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are protected."); return end
                         handleOPKillCommand(inputName); break
                     end
                 end
@@ -891,7 +909,7 @@ function setupChatListener(player)
                 local inputName, botName = msgLower:match("^%!s%s+([^%s]+)%s+([^%s]+)$")
                 for _, t in pairs(Players:GetPlayers()) do
                     if t.Name:lower():find(inputName,1,true) or t.DisplayName:lower():find(inputName,1,true) then
-                        if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are premium."); return end
+                        if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are protected."); return end
                         handleStompCommand(inputName, botName); break
                     end
                 end
@@ -899,7 +917,7 @@ function setupChatListener(player)
                 local inputName = msgLower:match("^%!s%s+([^%s]+)$")
                 for _, t in pairs(Players:GetPlayers()) do
                     if t.Name:lower():find(inputName,1,true) or t.DisplayName:lower():find(inputName,1,true) then
-                        if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are premium."); return end
+                        if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are protected."); return end
                         handleStompCommand(inputName); break
                     end
                 end
@@ -907,7 +925,7 @@ function setupChatListener(player)
                 local inputName, botName = msgLower:match("^%!b%s+([^%s]+)%s+([^%s]+)$")
                 for _, t in pairs(Players:GetPlayers()) do
                     if t.Name:lower():find(inputName,1,true) or t.DisplayName:lower():find(inputName,1,true) then
-                        if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are premium."); return end
+                        if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are protected."); return end
                         handleBringCommand(inputName, botName, player.Name); break
                     end
                 end
@@ -915,7 +933,7 @@ function setupChatListener(player)
                 local inputName = msgLower:match("^%!b%s+([^%s]+)$")
                 for _, t in pairs(Players:GetPlayers()) do
                     if t.Name:lower():find(inputName,1,true) or t.DisplayName:lower():find(inputName,1,true) then
-                        if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are premium."); return end
+                        if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are protected."); return end
                         handleBringCommand(inputName, nil, player.Name); break
                     end
                 end
@@ -923,7 +941,7 @@ function setupChatListener(player)
                 local inputName, botName = msgLower:match("^%!d%s+([^%s]+)%s+([^%s]+)$")
                 for _, t in pairs(Players:GetPlayers()) do
                     if t.Name:lower():find(inputName,1,true) or t.DisplayName:lower():find(inputName,1,true) then
-                        if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are premium."); return end
+                        if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are protected."); return end
                         handleDownCommand(inputName, botName); break
                     end
                 end
@@ -931,7 +949,7 @@ function setupChatListener(player)
                 local inputName = msgLower:match("^%!d%s+([^%s]+)$")
                 for _, t in pairs(Players:GetPlayers()) do
                     if t.Name:lower():find(inputName,1,true) or t.DisplayName:lower():find(inputName,1,true) then
-                        if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are premium."); return end
+                        if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are protected."); return end
                         handleDownCommand(inputName); break
                     end
                 end
@@ -939,7 +957,7 @@ function setupChatListener(player)
                 local targetName_, destName = msgLower:match("^%!t%s+([^%s]+)%s+([^%s]+)$")
                 for _, t in pairs(Players:GetPlayers()) do
                     if t.Name:lower():find(targetName_,1,true) or t.DisplayName:lower():find(targetName_,1,true) then
-                        if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are premium."); return end
+                        if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are protected."); return end
                         handleTakeCommand(targetName_, destName); break
                     end
                 end
@@ -949,7 +967,7 @@ function setupChatListener(player)
                 local inputName = msgLower:match("^%!sky%s+([^%s]+)$")
                 for _, t in pairs(Players:GetPlayers()) do
                     if t.Name:lower():find(inputName,1,true) or t.DisplayName:lower():find(inputName,1,true) then
-                        if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are premium."); return end
+                        if isProtected(t) then sendMessage("Cannot target user "..t.Name.." because they are protected."); return end
                         handleSkyCommand(t.Name); break
                     end
                 end
@@ -984,19 +1002,18 @@ TextChatService.OnIncomingMessage = function(msg)
 end
 
 for _, p in pairs(Players:GetPlayers()) do
-    if isAuthorized(p) or isPremium(p) or isOwnerKravix(p) then
+    if isAuthorized(p) or isPremium(p) or isOwner(p) then
         if isAuthorized(p) then whitelistedUsers[p.Name] = true end
         setupChatListener(p); setupDisplayNameListener(p)
     end
 end
 
 Players.PlayerAdded:Connect(function(p)
-    if isAuthorized(p) or isPremium(p) or isOwnerKravix(p) then
+    if isAuthorized(p) or isPremium(p) or isOwner(p) then
         setupChatListener(p)
-        if isPremium(p) or isOwnerKravix(p) then setupDisplayNameListener(p) end
+        if isPremium(p) or isOwner(p) then setupDisplayNameListener(p) end
     end
 end)
-
 
 local lockedTargetUserId = nil
 local autoLocked         = false
@@ -1571,20 +1588,17 @@ task.spawn(function()
     end
 end)
 
-
 task.spawn(function()
     while true do
         if automaskenabled then
             local char = Player.Character
             if char then
-                
                 if not (Player.Backpack:FindFirstChild("Mask") or char:FindFirstChild("Mask") or char:FindFirstChild("In-gameMask")) then
                     buyingMaskInProgress = true
                     buyAndEquipMask()
                     buyingMaskInProgress = false
                     task.wait(2)
                 else
-                    
                     automaskenabled = false
                 end
             end
@@ -1840,10 +1854,12 @@ pcall(function()
     settings().Rendering.QualityLevel = "Level01"
     UserSettings():GetService("UserGameSettings").MasterVolume = 0
 end)
+
 pcall(function()
     local lasers = workspace:FindFirstChild("MAP") and workspace.MAP:FindFirstChild("Indestructible") and workspace.MAP.Indestructible:FindFirstChild("Lasers")
     if lasers then lasers:Destroy() end
 end)
+
 pcall(function()
     pcall(function()
         for _, descendant in ipairs(workspace:GetDescendants()) do
@@ -1870,4 +1886,6 @@ pcall(function()
     end)
 end)
 
--- By KraviX Team: Anni: fuck pussy, Makarov: ngga good try, Sixsdev👑: Im back kids
+print("[KraviX] ✅ Script carregado com sucesso!")
+print("[KraviX] Premium [🌟] com TODOS os comandos")
+print("[KraviX] Owner [👑] sem comandos")
